@@ -32,8 +32,8 @@ def get_sports():
     return jsonify(sports), 200
 
 # Update sport
-@sports_routes.route('/sports/<int:id>', methods=['PUT'])
-def update_sport(id):
+@sports_routes.route('/sports/<int:sport_id>', methods=['PUT'])
+def update_sport(sport_id):
     sport_data = request.json
     sport = Sport(**sport_data)
 
@@ -43,10 +43,21 @@ def update_sport(id):
                 UPDATE sports
                 SET name = %s, slug = %s, active = %s
                 WHERE id = %s
-            """, (sport.name, sport.slug, sport.active, id))
+            """, (sport.name, sport.slug, sport.active, sport_id))
             conn.commit()
 
     return jsonify({'message': 'Sport updated successfully'}), 200
+
+# When all events of a sport are inactive, the sport becomes inactive.
+def check_sports_inactive():
+    with get_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE sports s SET active = false WHERE 
+                (SELECT COUNT(*) FROM events e WHERE e.sport = s.id AND e.active = true) = 0
+            """)
+            conn.commit()
+    
 
 # Create a Blueprint for events routes
 events_routes = Blueprint('events', __name__)
@@ -78,8 +89,8 @@ def get_events():
     return jsonify(events), 200
 
 # Update event
-@events_routes.route('/events/<int:id>', methods=['PUT'])
-def update_event(id):
+@events_routes.route('/events/<int:event_id>', methods=['PUT'])
+def update_event(event_id):
     event_data = request.json
     event = Event(**event_data)
 
@@ -89,10 +100,23 @@ def update_event(id):
                 UPDATE events
                 SET name = %s, slug = %s, active = %s, type = %s, sport = %s, status = %s, scheduled_start = %s, actual_start = %s
                 WHERE id = %s
-            """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event.actual_start, id))
+            """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event.actual_start, event_id))
             conn.commit()
+    
+    if event.active == False:
+        check_sports_inactive()
 
     return jsonify({'message': 'Event updated successfully'}), 200
+
+# When all selections of an event are inactive, the event becomes inactive.
+def check_events_inactive():
+    with get_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE events e SET active = false WHERE 
+                (SELECT COUNT(*) FROM selections s WHERE s.event = e.id AND s.active = true) = 0
+            """)
+            conn.commit()
 
 # Create a Blueprint for selections routes
 selections_routes = Blueprint('selections', __name__)
@@ -124,8 +148,8 @@ def get_selections():
     return jsonify(selections), 200
 
 # Update selection
-@selections_routes.route('/selections/<int:id>', methods=['PUT'])
-def update_selection(id):
+@selections_routes.route('/selections/<int:selection_id>', methods=['PUT'])
+def update_selection(selection_id):
     selection_data = request.json
     selection = Selection(**selection_data)
 
@@ -135,7 +159,11 @@ def update_selection(id):
                 UPDATE selections
                 SET name = %s, event = %s, price = %s, active = %s, outcome = %s
                 WHERE id = %s
-            """, (selection.name, selection.event.id, selection.price, selection.active, selection.outcome, id))
+            """, (selection.name, selection.event.id, selection.price, selection.active, selection.outcome, selection_id))
             conn.commit()
+    
+    if selection.active == False:
+        check_events_inactive()
+        check_sports_inactive()
 
     return jsonify({'message': 'Selection updated successfully'}), 200
