@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS events (
     sport INT NOT NULL,
     status VARCHAR(255) NOT NULL,
     scheduled_start DATETIME NOT NULL,
-    actual_start DATETIME NOT NULL,
+    actual_start DATETIME,
     FOREIGN KEY (sport) REFERENCES sports(id) ON DELETE CASCADE
 );
 
