@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from datetime import datetime
 from models import Sport, Event, Selection
 from db import get_db
 
@@ -21,15 +22,31 @@ def create_sport():
 
     return jsonify({'message': 'Sport created successfully'}), 201
 
-# Search sports
-@sports_routes.route('/sports', methods=['GET'])
-def get_sports():
-    with get_db() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM sports")
-            sports = cursor.fetchall()
-
-    return jsonify(sports), 200
+# Search sport
+@sports_routes.route('/sports/search', methods=['GET'])
+def search_sports():
+    base_sql = """
+        SELECT s.* FROM sports s 
+        JOIN (
+            SELECT e.sport, COUNT(*) active_events_count 
+            FROM events e WHERE e.active = true GROUP BY e.sport
+        ) ec ON s.id = ec.sport 
+        WHERE 1=1
+    """
+    filters = {}
+    if request.args.get('name_regex'):
+        filters['name_regex'] = {
+            'column': 's.name',
+            'operator': 'REGEXP',
+            'value': request.args.get('name_regex')
+        }
+    if request.args.get('min_active_events'):
+        filters['min_active_events'] = {
+            'column': 'ec.active_events_count',
+            'operator': '>=',
+            'value': int(request.args.get('min_active_events', 0))
+        }
+    return search(base_sql, filters)
 
 # Update sport
 @sports_routes.route('/sports/<int:sport_id>', methods=['PUT'])
@@ -79,14 +96,40 @@ def create_event():
     return jsonify({'message': 'Event created successfully'}), 201
 
 # Search events
-@events_routes.route('/events', methods=['GET'])
-def get_events():
-    with get_db() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM events")
-            events = cursor.fetchall()
-
-    return jsonify(events), 200
+@events_routes.route('/events/search', methods=['GET'])
+def search_events():
+    base_sql = """
+        SELECT e.* FROM events e 
+        JOIN (
+            SELECT s.event, COUNT(*) active_selections_count 
+            FROM selections s WHERE s.active = true GROUP BY s.event
+        ) sc ON e.id = sc.event 
+        WHERE 1=1
+    """
+    filters = {}
+    if request.args.get('name_regex'):
+        filters['name_regex'] = {
+            'column': 'e.name',
+            'operator': 'REGEXP',
+            'value': request.args.get('name_regex')
+        }
+    if request.args.get('min_active_selections'):
+        filters['min_active_selections'] = {
+            'column': 'sc.active_selections_count',
+            'operator': '>=',
+            'value': int(request.args.get('min_active_selections', 0))
+        }
+    if request.args.get('start_time') and request.args.get('end_time'):
+        filters['start_time'] = {
+            'column': 'CONVERT_TZ(e.scheduled_start, "+00:00", %s)',
+            'operator': 'BETWEEN',
+            'value': (
+                request.args.get('timezone'),
+                datetime.fromisoformat(request.args.get('start_time')),
+                datetime.fromisoformat(request.args.get('end_time'))
+            ) if request.args.get('start_time') and request.args.get('end_time') else None
+        }
+    return search(base_sql, filters)
 
 # Update event
 @events_routes.route('/events/<int:event_id>', methods=['PUT'])
@@ -115,7 +158,6 @@ def update_event(event_id):
 
     return jsonify({'message': 'Event updated successfully'}), 200
 
-
 # When all selections of an event are inactive, the event becomes inactive.
 def check_events_inactive():
     with get_db() as conn:
@@ -125,6 +167,7 @@ def check_events_inactive():
                 (SELECT COUNT(*) FROM selections s WHERE s.event = e.id AND s.active = true) = 0
             """)
             conn.commit()
+
 
 # Create a Blueprint for selections routes
 selections_routes = Blueprint('selections', __name__)
@@ -146,14 +189,20 @@ def create_selection():
     return jsonify({'message': 'Selection created successfully'}), 201
 
 # Search selections
-@selections_routes.route('/selections', methods=['GET'])
-def get_selections():
-    with get_db() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM selections")
-            selections = cursor.fetchall()
-
-    return jsonify(selections), 200
+@selections_routes.route('/selections/search', methods=['GET'])
+def search_selections():
+    base_sql = """
+        SELECT * FROM selections 
+        WHERE 1=1
+    """
+    filters = {}
+    if request.args.get('name_regex'):
+        filters['name_regex'] = {
+            'column': 'name',
+            'operator': 'REGEXP',
+            'value': request.args.get('name_regex')
+        }
+    return search(base_sql, filters)
 
 # Update selection
 @selections_routes.route('/selections/<int:selection_id>', methods=['PUT'])
@@ -175,3 +224,27 @@ def update_selection(selection_id):
         check_sports_inactive()
 
     return jsonify({'message': 'Selection updated successfully'}), 200
+
+# General search function
+"""
+Takes a base sql query and a dictionary of filters as input. 
+Each filter is a dictionary that specifies the column to filter on, 
+the operator to use (e.g., '=', '>', 'REGEXP', 'BETWEEN', etc.), 
+and the value to compare against. 
+Additional filters can be added by extending the dictionaries in each route's function
+"""
+def search(sql, filters):
+    params = []
+    for key, filter in filters.items():
+        if filter['value'] is not None:
+            if filter['operator'] == 'BETWEEN' and isinstance(filter['value'], tuple):
+                sql += f" AND {filter['column']} {filter['operator']} %s AND %s"
+                params.extend(filter['value'])
+            else:
+                sql += f" AND {filter['column']} {filter['operator']} %s"
+                params.append(filter['value'])
+    with get_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(sql, params)
+            results = cursor.fetchall()
+    return jsonify(results), 200
