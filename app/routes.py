@@ -96,17 +96,25 @@ def update_event(event_id):
 
     with get_db() as conn:
         with conn.cursor() as cursor:
-            cursor.execute("""
-                UPDATE events
-                SET name = %s, slug = %s, active = %s, type = %s, sport = %s, status = %s, scheduled_start = %s, actual_start = %s
-                WHERE id = %s
-            """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event.actual_start, event_id))
+            if event.status == 'Started':
+                cursor.execute("""
+                    UPDATE events
+                    SET name = %s, slug = %s, active = %s, type = %s, sport = %s, status = %s, scheduled_start = %s, actual_start = NOW()
+                    WHERE id = %s
+                """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event_id))
+            else:
+                cursor.execute("""
+                    UPDATE events
+                    SET name = %s, slug = %s, active = %s, type = %s, sport = %s, status = %s, scheduled_start = %s
+                    WHERE id = %s
+                """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event_id))
             conn.commit()
-    
+
     if event.active == False:
         check_sports_inactive()
 
     return jsonify({'message': 'Event updated successfully'}), 200
+
 
 # When all selections of an event are inactive, the event becomes inactive.
 def check_events_inactive():
