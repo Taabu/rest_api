@@ -1,9 +1,9 @@
 import logging
 from flask import Blueprint, jsonify, request
-from cache import cache
 from datetime import datetime
-from models import Sport, Event, Selection
-from db import get_db
+from app.cache import cache
+from app.models import Sport, Event, Selection
+from app.db import get_db
 
 # Create a Blueprint for sports routes
 sports_routes = Blueprint('sports', __name__)

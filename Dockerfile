@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 COPY . /app
 COPY mysql/* /docker-entrypoint-initdb.d/
 
-CMD ["python", "app/__init__.py"]
+CMD ["python", "run.py"]

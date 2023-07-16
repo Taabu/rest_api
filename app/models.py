@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, Literal
 from datetime import datetime
 from decimal import Decimal
-from db import get_db
+from app.db import get_db
 
 class Sport(BaseModel):
     id: int = Field(default=None)
