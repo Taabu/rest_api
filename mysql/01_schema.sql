@@ -20,6 +20,12 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (sport) REFERENCES sports(id) ON DELETE CASCADE
 );
 
+-- events table indexes
+CREATE INDEX idx_events_active ON events (active);
+CREATE INDEX idx_events_sport ON events (sport);
+CREATE INDEX idx_events_scheduled_start ON events (scheduled_start);
+CREATE INDEX idx_events_sport_active ON events (sport, active);
+
 -- selections table
 CREATE TABLE IF NOT EXISTS selections (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -30,3 +36,7 @@ CREATE TABLE IF NOT EXISTS selections (
     outcome VARCHAR(255) NOT NULL,
     FOREIGN KEY (event) REFERENCES events(id) ON DELETE CASCADE
 );
+
+-- selections table indexes
+CREATE INDEX idx_selections_event ON selections (event);
+CREATE INDEX idx_selections_active ON selections (active);
