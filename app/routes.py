@@ -1,5 +1,6 @@
 import logging
 from flask import Blueprint, jsonify, request
+from cache import cache
 from datetime import datetime
 from models import Sport, Event, Selection
 from db import get_db
@@ -21,6 +22,8 @@ def create_sport():
                 VALUES (%s, %s, %s)
             """, (sport.name, sport.slug, sport.active))
             conn.commit()
+        
+        cache.delete('sports')
 
         return jsonify({'message': 'Sport created successfully'}), 201
     except Exception as e:
@@ -29,6 +32,7 @@ def create_sport():
 
 # Search sport
 @sports_routes.route('/sports/search', methods=['GET'])
+@cache.cached(timeout=60, query_string=True, key_prefix='sports')
 def search_sports():
     try:
         base_sql = """
@@ -72,6 +76,8 @@ def update_sport(sport_id):
                     WHERE id = %s
                 """, (sport.name, sport.slug, sport.active, sport_id))
                 conn.commit()
+        
+        cache.delete('sports')
 
         return jsonify({'message': 'Sport updated successfully'}), 200
     except Exception as e:
@@ -88,6 +94,9 @@ def check_sports_inactive():
                     (SELECT COUNT(*) FROM events e WHERE e.sport = s.id AND e.active = true) = 0
                 """)
                 conn.commit()
+
+        cache.delete('sports')
+
     except Exception as e:
         logging.exception("Error checking sports inactive:")
 
@@ -108,6 +117,8 @@ def create_event():
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event.actual_start))
                 conn.commit()
+        
+        cache.delete('events')
 
         return jsonify({'message': 'Event created successfully'}), 201
     except Exception as e:
@@ -116,6 +127,7 @@ def create_event():
 
 # Search events
 @events_routes.route('/events/search', methods=['GET'])
+@cache.cached(timeout=60, query_string=True, key_prefix='events')
 def search_events():
     try:
         base_sql = """
@@ -177,6 +189,8 @@ def update_event(event_id):
                     """, (event.name, event.slug, event.active, event.type, event.sport.id, event.status, event.scheduled_start, event_id))
                 conn.commit()
 
+        cache.delete('events')
+
         if event.active == False:
             check_sports_inactive()
 
@@ -195,6 +209,9 @@ def check_events_inactive():
                     (SELECT COUNT(*) FROM selections s WHERE s.event = e.id AND s.active = true) = 0
                 """)
                 conn.commit()
+        
+        cache.delete('events')
+
     except Exception as e:
         logging.exception("Error checking events inactive:")
 
@@ -215,6 +232,8 @@ def create_selection():
                     VALUES (%s, %s, %s, %s, %s)
                 """, (selection.name, selection.event.id, selection.price, selection.active, selection.outcome))
                 conn.commit()
+        
+        cache.delete('selections')
 
         return jsonify({'message': 'Selection created successfully'}), 201
     except Exception as e:
@@ -223,6 +242,7 @@ def create_selection():
 
 # Search selections
 @selections_routes.route('/selections/search', methods=['GET'])
+@cache.cached(timeout=60, query_string=True, key_prefix='selections')
 def search_selections():
     try:
         base_sql = """
@@ -256,6 +276,8 @@ def update_selection(selection_id):
                     WHERE id = %s
                 """, (selection.name, selection.event.id, selection.price, selection.active, selection.outcome, selection_id))
                 conn.commit()
+        
+        cache.delete('selections')
 
         if selection.active == False:
             check_events_inactive()

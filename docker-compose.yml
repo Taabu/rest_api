@@ -15,8 +15,10 @@ services:
       MYSQL_DATABASE: "${MYSQL_DATABASE}"
       MYSQL_USER: "${MYSQL_USER}"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      REDIS_URL: "redis://cache:6379/0"
     depends_on:
       - db
+      - cache
 
   db:
     image: mysql:5.7
@@ -29,3 +31,8 @@ services:
       - '3306:3306'
     volumes:
       - ./mysql:/docker-entrypoint-initdb.d
+
+  cache:
+    image: redis:6.2.5
+    ports:
+      - '6379:6379'

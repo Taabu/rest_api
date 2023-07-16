@@ -1,6 +1,9 @@
 from flask import Flask
+import os
+from cache import cache
 
 app = Flask(__name__)
+cache.init_app(app, config={'CACHE_TYPE': 'RedisCache', 'CACHE_REDIS_URL': os.environ.get('REDIS_URL')})
 
 @app.route("/")
 def hello_world():
