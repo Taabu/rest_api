@@ -1,6 +1,6 @@
 Requires docker
 
-Requires a .env in the root folder file with the following content:
+Requires a .env file in the root folder with the following content:
 
 ```
 MYSQL_DATABASE=
