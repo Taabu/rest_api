@@ -5,13 +5,13 @@ from decimal import Decimal
 from app.db import get_db
 
 class Sport(BaseModel):
-    id: int = Field(default=None)
+    id: Optional[int] = Field(default=None)
     name: str
     slug: str
     active: bool
 
 class Event(BaseModel):
-    id: int = Field(default=None)
+    id: Optional[int] = Field(default=None)
     name: str
     slug: str
     active: bool
@@ -42,7 +42,7 @@ class Event(BaseModel):
                     raise ValueError(f"Sport with id {sport} does not exist")
 
 class Selection(BaseModel):
-    id: int = Field(default=None)
+    id: Optional[int] = Field(default=None)
     name: str
     event: Event
     price: Decimal
