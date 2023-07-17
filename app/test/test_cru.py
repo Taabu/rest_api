@@ -17,6 +17,9 @@ def client(app):
     return app.test_client()
 
 
+# TODO: improve test coverage to 100%
+# TODO: test for exceptions
+
 def test_create_sport(client):
     payload = {'name': 'Test Sport', 
                'slug': 'test-sport', 

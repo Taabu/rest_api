@@ -5,6 +5,9 @@ from app.cache import cache
 from app.models import Sport, Event, Selection
 from app.db import get_db
 
+# TODO: split base_sql to avoid join when not searching for active_count
+# TODO: when checking inactive use the (sport/event) id to avoid full table search
+
 # Create a Blueprint for sports routes
 sports_routes = Blueprint('sports', __name__)
 
